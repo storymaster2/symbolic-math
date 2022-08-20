@@ -329,6 +329,8 @@ def gcd2(a,b):
         while not(a == 0):
             temp = a
             a = b % a
+            if a == temp:
+                return 1
             b = temp
         return b
 
@@ -394,7 +396,7 @@ def Squarefree_Musser(A):
     return factors
 
 # Yun's squarefree factorization
-def Squarefree(A):
+def Squarefree(A, separateConstant=False):
     # Given a unique factorization domain D of characteristic 0
     # Given A is an element of D[x]
     # Return A1,...,Am, elements of D[x] such that the sum product of A_k^k from k=1 to m = A and is a squarefree factorization of A
@@ -423,9 +425,15 @@ def Squarefree(A):
     factors = []
 
     for i in range(len(A)):
-        factors.append(A[i] * c)
+        if separateConstant:
+            factors.append(A[i])
+        else:
+            factors.append(A[i] * c)
 
-    return factors
+    if separateConstant:
+        return [c, factors]
+    else:
+        return factors
 
 # Hermite Reduction - original version
 def HermiteReduce_original(A, D):
@@ -615,13 +623,23 @@ def IntRationalLogPart(A, D):
     t = Coefficient(1, "t")
     R = SubResultant(D, A - t * D.getDerivative())
     R_list = R[1:]
+    for i in range(len(R_list)):
+        print("R[",i,"] =",R_list[i])
     R = R[0].convertToPolynomial("t")
     # for e in R:
     #     print(e)
 
-    print(R)
     print()
-    Q = Squarefree(R)
+    print("R = ", R)
+    print()
+    c_Q = Squarefree(R, separateConstant=True)
+    c = c_Q[0]
+    print()
+    Q = c_Q[1]
+    print("c = ",c)
+    for i in range(len(Q)):
+        print("Q[",i,"] =",Q[i])
+    print()
     S = []
 
     for i in range(len(Q)):
@@ -638,12 +656,21 @@ def IntRationalLogPart(A, D):
                 else:
                     raise Exception("something didn't work")
 
+                print("i =",i)
                 print(S[i])
-                S[i].setPrimaryCoefficientVariable("t")
-                A_list = Squarefree(S[i])
+                print(S[i].lc)
+                print(S[i].lc.convertToPolynomial("t"))
+                A_list = Squarefree(S[i].lc.convertToPolynomial("t"))
+                for k in range(len(A_list)):
+                    print("A[",k,"] =",A_list[k])
+                print(len(A_list))
                 for j in range(len(A_list)):
+                    print("A[",j,"] =",A_list[j])
+                    print("Q[",i,"] =",Q[i])
+                    print("gcd =",gcd(A_list[j], Q[i]))
                     S[i] /= gcd(A_list[j], Q[i]) ** (j + 1)
     
+    print()
     for element in S:
         print(element)
 
