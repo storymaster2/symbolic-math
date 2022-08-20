@@ -825,9 +825,21 @@ class PolynomialExpression:
             else:
                 if 0 in self.terms.keys():
                     underTheRoot = -self.terms[0] / self.terms[2]
-                    # TODO
+                    return IrrationalRoot(underTheRoot, Fraction(1/2))
                 else:
                     return 0
+        elif self.degree == 3:
+            if 1 in self.terms.keys() or 2 in self.terms.keys():
+                # TODO: implement cubic root analysis
+                raise Exception("not implemented")
+            else:
+                if 0 in self.terms.keys():
+                    underTheRoot = -self.terms[0] / self.terms[3]
+                    return IrrationalRoot(underTheRoot, Fraction(1/3))
+                else:
+                    return 0
+        else:
+            raise Exception("not implemented")
 
 class Symbol:
     # Note: this class is intended to be an immutable object
@@ -2192,7 +2204,7 @@ class SymbolicMatrix:
 
             # calculate determinant of submatrices of increasing size, using previously-calculated determinants for smaller submatrices
             for i in range(1,self.rows):
-                columnCombinations = Helper.combinationsFrozen(range(self.rows), i+1)
+                columnCombinations = combinationsFrozen(range(self.rows), i+1)
                 for J in columnCombinations:
                     M[J] = 0
                     cols = sorted(list(J)) # unfreeze and sort combination
@@ -2332,15 +2344,97 @@ class IrrationalRoot:
 
     def __init__(self, value, exponent):
         self.value = toFraction(value)
-        if exponent < 1:
+        if exponent < 0:
             self.value = 1 / self.value
         self.exponent = toFraction(abs(exponent))
 
     def __str__(self):
         return self.toString()
 
+    def __add__(self, other):
+        return self.add(other)
+
+    def __radd__(self, other):
+        return self.add(other)
+
+    def __sub__(self, other):
+        return self.add(other * -1)
+
+    def __rsub__(self, other):
+        negativeSelf = self * -1
+        return negativeSelf.add(other)
+
+    def __mul__(self, other):
+        return self.multiply(other)
+
+    def __rmul__(self, other):
+        return self.multiply(other)
+    
+    def __pow__(self, other):
+        return self.raiseToPower(other)
+
+    def __eq__(self, other):
+        selfValue = self.evaluate()
+        if isinstance(selfValue, Fraction):
+            return selfValue == other
+        else:
+            if isinstance(other, IrrationalRoot):
+                return self.value == other.value and self.exponent == other.exponent
+                #TODO: check if a simplification can make them equal (for example, 4^1/2 = 16^1/4)
+            else:
+                return False
+
     def add(self, other):
-        pass
+        selfValue = self.evaluate()
+        if isinstance(selfValue, Fraction):
+            return selfValue + other
+        else:
+            return NotImplemented
+
+    def multiply(self, other):
+        if isinstance(other, IrrationalRoot):
+            other = other.evaluate()
+
+        if isinstance(other, IrrationalRoot):
+            selfValue = self.value ** (self.exponent.numerator * other.exponent.denominator)
+            otherValue = other.value ** (other.exponent.numerator * self.exponent.denominator)
+            newValue = selfValue * otherValue
+            newExponent = Fraction(1, self.exponent.denominator * other.exponent.denominator)
+            return IrrationalRoot(newValue, newExponent).evaluate()
+        else:
+            other = toFraction(other)
+            if isinstance(other, Fraction):
+                newValue = self.value * other ** (1 / self.exponent)
+                return IrrationalRoot(newValue, self.exponent).evaluate()
+            else:
+                return NotImplemented
+
+    def divide(self, other):
+        if isinstance(other, IrrationalRoot):
+            other = other.evaluate()
+
+        if isinstance(other, IrrationalRoot):
+            selfValue = self.value ** (self.exponent.numerator * other.exponent.denominator)
+            otherValue = other.value ** (other.exponent.numerator * self.exponent.denominator)
+            newValue = selfValue / otherValue
+            newExponent = Fraction(1, self.exponent.denominator * other.exponent.denominator)
+            return IrrationalRoot(newValue, newExponent).evaluate()
+        else:
+            other = toFraction(other)
+            if isinstance(other, Fraction):
+                newValue = self.value / other ** (1 / self.exponent)
+                return IrrationalRoot(newValue, self.exponent).evaluate()
+            else:
+                return NotImplemented
+
+    def raiseToPower(self, other):
+        other = toFraction(other)
+        if isinstance(other, Fraction):
+            newNumerator = self.exponent.numerator * other.numerator
+            newDenominator = self.exponent.denominator * other.denominator
+            return IrrationalRoot(self.value, Fraction(newNumerator, newDenominator)).evaluate()
+        else:
+            return NotImplemented
 
     def evaluateCoefficient(self):
         # attempt to simplify the coefficient to a rational number (result may still be complex)
@@ -2380,6 +2474,8 @@ class IrrationalRoot:
         else:
             return str(simplified)
 
+    def isComplex(self):
+        return self.value < 0 and self.exponent < 1
 
 # t = Symbol("t")
 # b = Symbol("t")
