@@ -1,9 +1,9 @@
-from Polynomial import Coefficient
-from Polynomial import Symbol
-from Polynomial import SymbolSet
-from Polynomial import PolynomialExpression
-from Polynomial import PolynomialSeries
-from SymbolicMatrix import SymbolicMatrix
+from SymbolicMath import Coefficient
+from SymbolicMath import Symbol
+from SymbolicMath import SymbolSet
+from SymbolicMath import PolynomialExpression
+from SymbolicMath import PolynomialSeries
+from SymbolicMath import SymbolicMatrix
 import time
 
 # Euclidian Polynomial Division
@@ -674,6 +674,13 @@ def IntRationalLogPart(A, D):
     for element in S:
         print(element)
 
+    print()
+    for i in range(len(Q)):
+        if Q[i].degree > 0:
+            print("root =",Q[i].getRoots())
+
+    for i in range(len(S)):
+        pass
 
 
 

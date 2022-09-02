@@ -1121,6 +1121,25 @@ class SymbolSet:
             symbols.discard(Symbol())
         return symbols
 
+class Number:
+    # A data type that can include both rational and irrational numeric data (no symbols)
+    rationalComponent = Fraction(0)
+    irrationalComponent = None
+
+    def __init__(self, rational=Fraction(0), irrational=None):
+        self.rationalComponent = rational
+        self.irrationalComponent = irrational
+    
+    def toString(self):
+        if self.IrrationalComponent == None:
+            return str(self.rationalComponent)
+        
+        if self.rationalComponent == 0:
+            return str(self.irrationalComponent)
+
+        returnString = "(" + str(self.rationalComponent)
+        return "(" + str(self.rationalComponent) + " "
+
 class Coefficient:
     # Note: this class works only with Fraction number types (this was implemented to prevent floating point errors, which kept cropping up)
     # Convert all incoming number types to Fraction
@@ -2341,12 +2360,14 @@ class SymbolicMatrix:
 class IrrationalRoot:
     value = 0
     exponent = 0
+    negative = False
 
-    def __init__(self, value, exponent):
+    def __init__(self, value, exponent, negative=False):
         self.value = toFraction(value)
         if exponent < 0:
             self.value = 1 / self.value
         self.exponent = toFraction(abs(exponent))
+        self.negative = negative
 
     def __str__(self):
         return self.toString()
@@ -2373,22 +2394,33 @@ class IrrationalRoot:
     def __pow__(self, other):
         return self.raiseToPower(other)
 
+    def __abs__(self):
+        return IrrationalRoot(self.value, self.exponent)
+
     def __eq__(self, other):
         selfValue = self.evaluate()
         if isinstance(selfValue, Fraction):
             return selfValue == other
         else:
             if isinstance(other, IrrationalRoot):
-                return self.value == other.value and self.exponent == other.exponent
+                return self.value == other.value and self.exponent == other.exponent and self.negative == other.negative
                 #TODO: check if a simplification can make them equal (for example, 4^1/2 = 16^1/4)
             else:
                 return False
+
+    @property
+    def sign(self):
+        if self.negative:
+            return -1
+        else:
+            return 1
 
     def add(self, other):
         selfValue = self.evaluate()
         if isinstance(selfValue, Fraction):
             return selfValue + other
         else:
+            # TODO: return number
             return NotImplemented
 
     def multiply(self, other):
@@ -2400,12 +2432,13 @@ class IrrationalRoot:
             otherValue = other.value ** (other.exponent.numerator * self.exponent.denominator)
             newValue = selfValue * otherValue
             newExponent = Fraction(1, self.exponent.denominator * other.exponent.denominator)
-            return IrrationalRoot(newValue, newExponent).evaluate()
+            return IrrationalRoot(newValue, newExponent, self.negative != other.negative).evaluate()
         else:
             other = toFraction(other)
             if isinstance(other, Fraction):
-                newValue = self.value * other ** (1 / self.exponent)
-                return IrrationalRoot(newValue, self.exponent).evaluate()
+                newValue = self.value * abs(other) ** (1 / self.exponent)
+                negative = self.negative != (other < 0)
+                return IrrationalRoot(newValue, self.exponent, negative).evaluate()
             else:
                 return NotImplemented
 
@@ -2418,12 +2451,13 @@ class IrrationalRoot:
             otherValue = other.value ** (other.exponent.numerator * self.exponent.denominator)
             newValue = selfValue / otherValue
             newExponent = Fraction(1, self.exponent.denominator * other.exponent.denominator)
-            return IrrationalRoot(newValue, newExponent).evaluate()
+            return IrrationalRoot(newValue, newExponent, self.negative != other.negative).evaluate()
         else:
             other = toFraction(other)
             if isinstance(other, Fraction):
-                newValue = self.value / other ** (1 / self.exponent)
-                return IrrationalRoot(newValue, self.exponent).evaluate()
+                newValue = self.value / abs(other) ** (1 / self.exponent)
+                negative = self.negative != (other < 0)
+                return IrrationalRoot(newValue, self.exponent, negative).evaluate()
             else:
                 return NotImplemented
 
@@ -2452,26 +2486,42 @@ class IrrationalRoot:
     def evaluate(self):
         # attempt to simplify the result to a rational number
         if self.exponent >= 1:
-            return self.value ** self.exponent
+            return self.sign * self.value ** self.exponent
         
-        if self.value < 1:
-            return IrrationalRoot(self.value, self.exponent)
+        if self.value < 0:
+            return IrrationalRoot(self.value, self.exponent, self.negative)
         else:
-            return self.evaluateCoefficient()
+            return self.evaluateCoefficient() * self.sign
+
+    def isNegative(self):
+        selfValue = self.evaluate()
+        if isinstance(selfValue, Fraction):
+            if self.negative:
+                selfValue *= -1
+            return selfValue < 0
+        else:
+            return self.negative
 
     def toString(self):
         simplified = self.evaluate()
         if isinstance(simplified, IrrationalRoot):
+            returnString = ""
+            if self.negative:
+                returnString += "-"
             coeff = self.evaluateCoefficient()
             if isinstance(coeff, Fraction):
                 # we know the result is a complex number, because the whole expression could not be simplified
-                return str(coeff) + "i"
+                returnString += str(coeff) + "i"
             else:
                 if self.value < 0:
-                    return "(" + str(self.value) + ")^" + str(self.exponent)
+                    returnString += "(" + str(self.value) + ")^" + str(self.exponent)
                 else:
-                    return str(self.value) + "^" + str(self.exponent)
+                    returnString += str(self.value) + "^" + str(self.exponent)
+
+            return returnString
         else:
+            if self.negative:
+                simplified *= -1
             return str(simplified)
 
     def isComplex(self):
